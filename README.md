@@ -1,36 +1,97 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Reddit Outreach Tool
 
-## Getting Started
+Internal, multi-client Reddit marketing opportunity finder. For each active client,
+the tool finds fresh Reddit posts where a helpful, on-brand comment could naturally
+fit — and pre-writes the comment. Operator-facing dashboard + CSV export.
 
-First, run the development server:
+Stack: **Next.js 16**, Supabase (Postgres + Auth), Anthropic Claude API, Vercel Cron, Tailwind.
+
+> ⚠️ **Next.js 16** has breaking changes. See `AGENTS.md` for the gotchas that bite
+> if you rely on older Next.js knowledge. TL;DR: `middleware.ts` is now `proxy.ts`,
+> `cookies()` / `headers()` / `params` are async, Turbopack is default, `next lint`
+> is gone.
+
+## Setup
+
+### 1. Install dependencies
+
+```bash
+npm install
+```
+
+### 2. Create a Supabase project
+
+- Go to [supabase.com](https://supabase.com), create a new project (free tier is fine).
+- In the project dashboard, open **SQL Editor** and run the contents of
+  `supabase/migrations/0001_initial_schema.sql`.
+- Still in the Supabase dashboard, go to **Authentication → Users → Add user** and
+  create an operator account (email + password). Mark email as confirmed.
+
+### 3. Fill `.env.local`
+
+Copy `.env.local.example` to `.env.local` and fill in:
+
+- `NEXT_PUBLIC_SUPABASE_URL` + `NEXT_PUBLIC_SUPABASE_ANON_KEY` — from Supabase
+  → Project Settings → API.
+- `SUPABASE_SERVICE_ROLE_KEY` — same page, **service_role** key. Server-side only.
+  Never commit, never expose to the browser.
+- `ANTHROPIC_API_KEY` — from [console.anthropic.com](https://console.anthropic.com).
+- `CRON_SECRET` — any long random string (e.g. `openssl rand -hex 32`). Protects the
+  cron endpoints.
+- `NEXT_PUBLIC_APP_URL` — `http://localhost:3000` in dev, your deployed URL in prod.
+
+### 4. Run the dev server
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000). You should be redirected to
+`/login`. Sign in with the operator account you created above → land on an empty
+dashboard.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Deploy to Vercel (later)
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+1. Push this repo to GitHub.
+2. Import in Vercel. Add all the `.env.local` variables as Vercel environment
+   variables.
+3. Vercel Cron will be wired up via `vercel.json` in Phase 3 (not yet added —
+   deployment instructions will be updated then).
 
-## Learn More
+## Project layout
 
-To learn more about Next.js, take a look at the following resources:
+```
+src/
+  app/
+    login/              # Operator sign-in
+    dashboard/          # Protected area
+    auth/sign-out/      # POST endpoint to log out
+  lib/supabase/
+    client.ts           # Browser-side Supabase client
+    server.ts           # Server-side client (reads cookies for auth)
+    admin.ts            # Service-role client — cron only
+    proxy.ts            # Session refresh helper used by src/proxy.ts
+  proxy.ts              # Next.js 16 proxy (formerly middleware.ts) — auth gate
+supabase/migrations/    # SQL migrations
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Phase status
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- **Phase 1** ✅ Scaffold, auth, empty dashboard. Compiles clean, auth redirects verified.
+- **Phase 2** ⏳ Client management UI (next up).
+- **Phase 3** ⏳ Daily cron + Reddit scraper + Claude scoring + comments.
+- **Phase 4** ⏳ Dashboard opportunity views + CSV export.
 
-## Deploy on Vercel
+## Picking up tomorrow
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Before Phase 2 can start, fill in real credentials. Checklist:
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- [ ] Create a Supabase project at [supabase.com](https://supabase.com) (free tier).
+- [ ] In Supabase → **SQL Editor**, paste and run `supabase/migrations/0001_initial_schema.sql`.
+- [ ] In Supabase → **Authentication → Users → Add user**: create an operator account (email + password, tick "Auto Confirm User").
+- [ ] Copy URL + anon key + service-role key from Supabase → **Project Settings → API**.
+- [ ] Get an Anthropic API key from [console.anthropic.com](https://console.anthropic.com).
+- [ ] Open `.env.local` and replace the `placeholder_*` values with the real ones above.
+- [ ] Run `npm run dev`, open the URL it prints (probably `http://localhost:3001` since 3000 is in use), sign in.
+
+Once sign-in works, start a new Claude Code session in this folder and ask it to **"start Phase 2"** — it'll pick up the client-management UI work.

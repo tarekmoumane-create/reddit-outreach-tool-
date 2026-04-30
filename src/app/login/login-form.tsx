@@ -12,38 +12,45 @@ export function LoginForm({ next }: { next: string }) {
     <form action={formAction} className="flex flex-col gap-4">
       <input type="hidden" name="next" value={next} />
 
-      <label className="flex flex-col gap-1 text-sm">
-        <span className="font-medium text-neutral-700 dark:text-neutral-200">Email</span>
+      <label className="flex flex-col gap-1.5">
+        <span className="text-[10.5px] font-medium uppercase tracking-[0.08em] text-text-dim">
+          Email
+        </span>
         <input
           type="email"
           name="email"
           required
           autoComplete="email"
-          className="rounded-md border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500"
+          placeholder="you@company.com"
+          className="input"
         />
       </label>
 
-      <label className="flex flex-col gap-1 text-sm">
-        <span className="font-medium text-neutral-700 dark:text-neutral-200">Password</span>
+      <label className="flex flex-col gap-1.5">
+        <span className="text-[10.5px] font-medium uppercase tracking-[0.08em] text-text-dim">
+          Password
+        </span>
         <input
           type="password"
           name="password"
           required
           autoComplete="current-password"
-          className="rounded-md border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500"
+          className="input"
         />
       </label>
 
       {state.error ? (
-        <p className="text-sm text-red-600 dark:text-red-400">{state.error}</p>
+        <p className="rounded-lg border border-danger/30 bg-danger/5 px-3 py-2 text-[13px] text-danger">
+          {state.error}
+        </p>
       ) : null}
 
       <button
         type="submit"
         disabled={pending}
-        className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
+        className="btn-primary mt-2 justify-center"
       >
-        {pending ? "Signing in…" : "Sign in"}
+        {pending ? "Signing in" : "Sign in"}
       </button>
     </form>
   );

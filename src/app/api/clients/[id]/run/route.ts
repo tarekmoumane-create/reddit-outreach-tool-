@@ -7,7 +7,7 @@ import {
 } from "@/lib/pipeline/run-client";
 
 export const dynamic = "force-dynamic";
-export const maxDuration = 60;
+export const maxDuration = 800;
 
 type StreamEvent =
   | { kind: "progress"; event: ProgressEvent }

@@ -2,7 +2,7 @@ import { NextRequest } from "next/server";
 import { runForClient } from "@/lib/pipeline/run-client";
 
 export const dynamic = "force-dynamic";
-export const maxDuration = 60;
+export const maxDuration = 800;
 
 export async function POST(
   req: NextRequest,

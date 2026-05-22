@@ -9,7 +9,7 @@ import {
 import type { BrandProfile } from "@/lib/ai/research";
 
 export const dynamic = "force-dynamic";
-export const maxDuration = 60;
+export const maxDuration = 800;
 
 export async function POST(
   req: NextRequest,

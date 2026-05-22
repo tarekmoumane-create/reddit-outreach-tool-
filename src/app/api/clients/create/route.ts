@@ -5,7 +5,7 @@ import { fetchSiteContext } from "@/lib/research/fetch-site";
 import { researchBrand } from "@/lib/ai/research";
 
 export const dynamic = "force-dynamic";
-export const maxDuration = 60;
+export const maxDuration = 800;
 
 type CreatePayload = {
   name?: string;

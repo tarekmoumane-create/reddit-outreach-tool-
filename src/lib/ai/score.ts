@@ -107,7 +107,10 @@ export async function scorePost(input: ScoreInput): Promise<ScoreResult> {
     userParts.push(`- Body: ${input.post.summary.slice(0, 1500)}`);
 
   const resp = await anthropic.messages.create({
-    model: "claude-sonnet-4-6",
+    // Haiku for scoring (per project plan): ~3-5x faster and ~15x cheaper than
+    // Sonnet, plenty smart enough for a fit/no-fit judgement against the
+    // cached brand-profile system prompt.
+    model: "claude-haiku-4-5-20251001",
     max_tokens: 256,
     system: [
       {

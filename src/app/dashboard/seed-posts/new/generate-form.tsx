@@ -7,11 +7,15 @@ type ClientOption = {
   id: string;
   name: string;
   subreddits: string[];
-  hasProfile: boolean;};
+  hasProfile: boolean;
+};
+
+type Style = "organic" | "brand_led";
 
 type SeedPost = {
   id: string;
   subreddit: string;
+  style?: Style;
   post_title: string;
   post_body: string;
   comment_organic_1: string;
@@ -37,6 +41,24 @@ type GenJob = {
 const MAX_PER_RUN = 5;
 const PARALLELISM = 2;
 
+const COMMENT_LABELS: Record<
+  Style,
+  { c1: string; c2: string; c3: string; c3Accent: boolean }
+> = {
+  organic: {
+    c1: "Comment 1 (organic)",
+    c2: "Comment 2 (organic)",
+    c3: "Comment 3 (brand plug)",
+    c3Accent: true,
+  },
+  brand_led: {
+    c1: "Comment 1 (supportive)",
+    c2: "Comment 2 (question)",
+    c3: "Comment 3 (nuance)",
+    c3Accent: false,
+  },
+};
+
 function normalizeSub(raw: string): string {
   return raw.trim().replace(/^\/?r\//i, "").replace(/[^A-Za-z0-9_]/g, "").slice(0, 60);
 }
@@ -54,6 +76,7 @@ export function GenerateForm({
     () => clients.find((c) => c.id === clientId) ?? clients[0],
     [clients, clientId],
   );
+  const [style, setStyle] = useState<Style>("organic");
   const [picked, setPicked] = useState<Set<string>>(
     () => new Set(current.subreddits.slice(0, 1)),
   );
@@ -106,7 +129,7 @@ export function GenerateForm({
     const res = await fetch(`/api/clients/${clientId}/seed-posts`, {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ subreddit }),
+      body: JSON.stringify({ subreddit, style }),
     });
     const text = await res.text();
     let parsed: SeedPostResponse;
@@ -141,8 +164,6 @@ export function GenerateForm({
     setJobs(initial);
     setPending(true);
 
-    // Limited-parallelism worker pool: keeps a few Sonnet calls in flight at
-    // once without firing all N requests at the same instant.
     let cursor = 0;
     const updateJob = (i: number, patch: Partial<GenJob>) => {
       setJobs((prev) => {
@@ -195,6 +216,32 @@ export function GenerateForm({
               </option>
             ))}
           </select>
+        </Field>
+
+        <Field
+          label="Post style"
+          hint={
+            style === "brand_led"
+              ? "The post is openly about the brand — honest review, open question, switch story. Comments support, ask, and add nuance."
+              : "The post plants a discussion in the brand's niche WITHOUT naming the brand. The brand mention rides in via the third comment."
+          }
+        >
+          <div className="grid grid-cols-2 gap-2">
+            <StyleOption
+              active={style === "organic"}
+              disabled={pending}
+              onClick={() => setStyle("organic")}
+              title="Organic"
+              subtitle="Brand stays out of the post"
+            />
+            <StyleOption
+              active={style === "brand_led"}
+              disabled={pending}
+              onClick={() => setStyle("brand_led")}
+              title="Brand-led"
+              subtitle="Post is about the brand"
+            />
+          </div>
         </Field>
 
         <Field
@@ -259,7 +306,7 @@ export function GenerateForm({
                 ? `Too many — max ${MAX_PER_RUN}`
                 : finalSubs.length === 0
                   ? "Pick or type at least one subreddit"
-                  : `Will generate ${finalSubs.length} bundle${finalSubs.length === 1 ? "" : "s"}`}
+                  : `Will generate ${finalSubs.length} ${style === "brand_led" ? "brand-led" : "organic"} bundle${finalSubs.length === 1 ? "" : "s"}`}
           </span>
           <button
             type="submit"
@@ -304,7 +351,7 @@ export function GenerateForm({
 
           <ul className="flex flex-col gap-4">
             {jobs.map((j) => (
-              <JobCard key={j.subreddit} job={j} />
+              <JobCard key={j.subreddit} job={j} style={style} />
             ))}
           </ul>
         </div>
@@ -313,7 +360,44 @@ export function GenerateForm({
   );
 }
 
-function JobCard({ job }: { job: GenJob }) {
+function StyleOption({
+  active,
+  disabled,
+  onClick,
+  title,
+  subtitle,
+}: {
+  active: boolean;
+  disabled: boolean;
+  onClick: () => void;
+  title: string;
+  subtitle: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className={`flex flex-col gap-0.5 rounded-lg border px-3.5 py-2.5 text-left transition disabled:opacity-50 ${
+        active
+          ? "border-accent-strong bg-accent-soft/50"
+          : "border-border bg-surface hover:border-border-strong"
+      }`}
+    >
+      <span
+        className={`text-[13.5px] font-medium ${
+          active ? "text-accent" : "text-text"
+        }`}
+      >
+        {title}
+      </span>
+      <span className="text-[11.5px] text-text-muted">{subtitle}</span>
+    </button>
+  );
+}
+
+function JobCard({ job, style }: { job: GenJob; style: Style }) {
+  const labels = COMMENT_LABELS[style];
   return (
     <li className="card flex flex-col gap-3 px-5 py-4">
       <div className="flex items-center justify-between gap-3">
@@ -346,21 +430,13 @@ function JobCard({ job }: { job: GenJob }) {
         <div className="flex flex-col gap-3 border-t border-border pt-3">
           <Preview label="Post title" value={job.result.post_title} />
           <Preview label="Post body" value={job.result.post_body} multiline />
+          <Preview label={labels.c1} value={job.result.comment_organic_1} multiline />
+          <Preview label={labels.c2} value={job.result.comment_organic_2} multiline />
           <Preview
-            label="Comment 1 (organic)"
-            value={job.result.comment_organic_1}
-            multiline
-          />
-          <Preview
-            label="Comment 2 (organic)"
-            value={job.result.comment_organic_2}
-            multiline
-          />
-          <Preview
-            label="Comment 3 (brand plug)"
+            label={labels.c3}
             value={job.result.comment_plug}
             multiline
-            accent
+            accent={labels.c3Accent}
           />
         </div>
       ) : null}

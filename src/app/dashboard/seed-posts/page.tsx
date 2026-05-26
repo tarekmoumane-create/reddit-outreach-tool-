@@ -21,7 +21,7 @@ export default async function SeedPostsPage({
   let query = supabase
     .from("seed_posts")
     .select(
-      "id, client_id, subreddit, post_title, post_body, comment_organic_1, comment_organic_2, comment_plug, status, created_at, clients(name)",
+      "id, client_id, subreddit, style, post_title, post_body, comment_organic_1, comment_organic_2, comment_plug, status, created_at, clients(name)",
     )
     .order("created_at", { ascending: false })
     .limit(200);
@@ -105,6 +105,10 @@ export default async function SeedPostsPage({
             const view: SeedPostView = {
               id: r.id,
               subreddit: r.subreddit,
+              style:
+                (r.style as SeedPostView["style"]) === "brand_led"
+                  ? "brand_led"
+                  : "organic",
               post_title: r.post_title,
               post_body: r.post_body,
               comment_organic_1: r.comment_organic_1,

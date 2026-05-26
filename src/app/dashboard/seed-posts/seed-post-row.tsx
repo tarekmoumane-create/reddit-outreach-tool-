@@ -3,9 +3,12 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 
+export type SeedPostStyle = "organic" | "brand_led";
+
 export type SeedPostView = {
   id: string;
   subreddit: string;
+  style: SeedPostStyle;
   post_title: string;
   post_body: string;
   comment_organic_1: string;
@@ -16,11 +19,31 @@ export type SeedPostView = {
   client_name: string;
 };
 
+const COMMENT_LABELS: Record<
+  SeedPostStyle,
+  { c1: string; c2: string; c3: string; c3Accent: boolean }
+> = {
+  organic: {
+    c1: "Comment 1 (organic)",
+    c2: "Comment 2 (organic)",
+    c3: "Comment 3 (brand plug)",
+    c3Accent: true,
+  },
+  brand_led: {
+    c1: "Comment 1 (supportive)",
+    c2: "Comment 2 (question)",
+    c3: "Comment 3 (nuance)",
+    c3Accent: false,
+  },
+};
+
 export function SeedPostRow({ seed: s }: { seed: SeedPostView }) {
   const router = useRouter();
   const [expanded, setExpanded] = useState(false);
   const [status, setStatus] = useState<SeedPostView["status"]>(s.status);
   const [pending, startTransition] = useTransition();
+
+  const labels = COMMENT_LABELS[s.style] ?? COMMENT_LABELS.organic;
 
   const date = new Date(s.created_at).toLocaleDateString(undefined, {
     month: "short",
@@ -33,6 +56,17 @@ export function SeedPostRow({ seed: s }: { seed: SeedPostView }) {
       : status === "skipped"
         ? "bg-surface-2 text-text-dim border-border"
         : "bg-warning/10 text-warning border-warning/30";
+
+  const styleBadge =
+    s.style === "brand_led"
+      ? {
+          label: "Brand-led",
+          cls: "bg-accent-soft/60 text-accent border-accent-strong/40",
+        }
+      : {
+          label: "Organic",
+          cls: "bg-surface-2 text-text-muted border-border",
+        };
 
   function setRemote(next: SeedPostView["status"]) {
     setStatus(next);
@@ -68,6 +102,11 @@ export function SeedPostRow({ seed: s }: { seed: SeedPostView }) {
             <span className="text-text-muted">{s.client_name}</span>
             <span className="h-3 w-px bg-border-strong" />
             <span>{date}</span>
+            <span
+              className={`inline-flex items-center rounded border px-1.5 py-0.5 text-[10px] uppercase tracking-[0.08em] ${styleBadge.cls}`}
+            >
+              {styleBadge.label}
+            </span>
           </div>
         </div>
         <span className="shrink-0 self-center text-[12px] text-text-muted">
@@ -79,21 +118,13 @@ export function SeedPostRow({ seed: s }: { seed: SeedPostView }) {
         <div className="entry flex flex-col gap-4 border-t border-border bg-bg-2/60 px-5 py-4">
           <CopyBlock label="Post title" value={s.post_title} />
           <CopyBlock label="Post body" value={s.post_body} multiline />
+          <CopyBlock label={labels.c1} value={s.comment_organic_1} multiline />
+          <CopyBlock label={labels.c2} value={s.comment_organic_2} multiline />
           <CopyBlock
-            label="Comment 1 (organic)"
-            value={s.comment_organic_1}
-            multiline
-          />
-          <CopyBlock
-            label="Comment 2 (organic)"
-            value={s.comment_organic_2}
-            multiline
-          />
-          <CopyBlock
-            label="Comment 3 (brand plug)"
+            label={labels.c3}
             value={s.comment_plug}
             multiline
-            accent
+            accent={labels.c3Accent}
           />
 
           <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border pt-3">

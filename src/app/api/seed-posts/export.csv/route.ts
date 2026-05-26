@@ -23,7 +23,7 @@ export async function GET(req: NextRequest) {
   let q = supabase
     .from("seed_posts")
     .select(
-      "client_id, subreddit, post_title, post_body, comment_organic_1, comment_organic_2, comment_plug, status, created_at, clients(name)",
+      "client_id, subreddit, style, post_title, post_body, comment_organic_1, comment_organic_2, comment_plug, status, created_at, clients(name)",
     )
     .order("created_at", { ascending: false });
   if (clientId) q = q.eq("client_id", clientId);
@@ -34,12 +34,13 @@ export async function GET(req: NextRequest) {
   const headers = [
     "client",
     "subreddit",
+    "style",
     "status",
     "post_title",
     "post_body",
-    "comment_organic_1",
-    "comment_organic_2",
-    "comment_plug",
+    "comment_1",
+    "comment_2",
+    "comment_3",
     "created_at",
   ];
 
@@ -56,6 +57,7 @@ export async function GET(req: NextRequest) {
       [
         csvEscape(clientName),
         csvEscape(s.subreddit),
+        csvEscape(s.style ?? "organic"),
         csvEscape(s.status),
         csvEscape(s.post_title),
         csvEscape(s.post_body),

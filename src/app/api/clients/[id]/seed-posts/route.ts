@@ -5,11 +5,14 @@ import {
   generateSeedPost,
   generateSeedComments,
   type SeedClient,
+  type SeedStyle,
 } from "@/lib/ai/seed";
 import type { BrandProfile } from "@/lib/ai/research";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 800;
+
+const ALLOWED_STYLES = new Set<SeedStyle>(["organic", "brand_led"]);
 
 export async function POST(
   req: NextRequest,
@@ -34,6 +37,12 @@ export async function POST(
   }
   const subreddit = subredditRaw.trim().replace(/^r\//i, "").slice(0, 60);
 
+  const styleRaw = (body as { style?: unknown })?.style;
+  const style: SeedStyle =
+    typeof styleRaw === "string" && ALLOWED_STYLES.has(styleRaw as SeedStyle)
+      ? (styleRaw as SeedStyle)
+      : "organic";
+
   const { data: client, error } = await supabase
     .from("clients")
     .select("id, name, url, description, brand_profile")
@@ -49,11 +58,16 @@ export async function POST(
   };
 
   try {
-    const post = await generateSeedPost({ client: seedClient, subreddit });
+    const post = await generateSeedPost({
+      client: seedClient,
+      subreddit,
+      style,
+    });
     const comments = await generateSeedComments({
       client: seedClient,
       subreddit,
       post,
+      style,
     });
 
     const db = createAdminClient();
@@ -62,6 +76,7 @@ export async function POST(
       .insert({
         client_id: id,
         subreddit,
+        style,
         post_title: post.title,
         post_body: post.body,
         comment_organic_1: comments.organic_1,
@@ -69,7 +84,7 @@ export async function POST(
         comment_plug: comments.plug,
       })
       .select(
-        "id, client_id, subreddit, post_title, post_body, comment_organic_1, comment_organic_2, comment_plug, status, created_at",
+        "id, client_id, subreddit, style, post_title, post_body, comment_organic_1, comment_organic_2, comment_plug, status, created_at",
       )
       .single();
     if (insertErr) throw insertErr;

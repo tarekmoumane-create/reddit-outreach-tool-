@@ -29,7 +29,7 @@ export default async function SeedPostsPage({
 
   const { data: rows, error } = await query;
 
-  const csvHref = `/api/seed-posts/export.csv${
+  const exportHref = `/api/seed-posts/export.xlsx${
     client_id ? `?client_id=${encodeURIComponent(client_id)}` : ""
   }`;
 
@@ -51,9 +51,9 @@ export default async function SeedPostsPage({
           </p>
         </div>
         <div className="flex items-center gap-3">
-          <a href={csvHref} className="btn-secondary">
+          <a href={exportHref} className="btn-secondary">
             <span className="text-[14px] leading-none">↓</span>
-            Export CSV
+            Export Excel
           </a>
           <Link href="/dashboard/seed-posts/new" className="btn-primary">
             <span className="text-base leading-none">+</span>

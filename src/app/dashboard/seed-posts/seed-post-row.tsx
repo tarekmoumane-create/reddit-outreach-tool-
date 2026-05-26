@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 
-export type SeedPostStyle = "organic" | "brand_led";
+export type SeedPostStyle = "organic" | "brand_led" | "bridge";
 
 export type SeedPostView = {
   id: string;
@@ -35,6 +35,30 @@ const COMMENT_LABELS: Record<
     c3: "Comment 3 (nuance)",
     c3Accent: false,
   },
+  bridge: {
+    c1: "Comment 1 (validates pain)",
+    c2: "Comment 2 (introduces concept)",
+    c3: "Comment 3 (names the project)",
+    c3Accent: true,
+  },
+};
+
+const STYLE_BADGES: Record<
+  SeedPostStyle,
+  { label: string; cls: string }
+> = {
+  organic: {
+    label: "Organic",
+    cls: "bg-surface-2 text-text-muted border-border",
+  },
+  brand_led: {
+    label: "Brand-led",
+    cls: "bg-accent-soft/60 text-accent border-accent-strong/40",
+  },
+  bridge: {
+    label: "Bridge",
+    cls: "bg-warning/10 text-warning border-warning/30",
+  },
 };
 
 export function SeedPostRow({ seed: s }: { seed: SeedPostView }) {
@@ -57,16 +81,7 @@ export function SeedPostRow({ seed: s }: { seed: SeedPostView }) {
         ? "bg-surface-2 text-text-dim border-border"
         : "bg-warning/10 text-warning border-warning/30";
 
-  const styleBadge =
-    s.style === "brand_led"
-      ? {
-          label: "Brand-led",
-          cls: "bg-accent-soft/60 text-accent border-accent-strong/40",
-        }
-      : {
-          label: "Organic",
-          cls: "bg-surface-2 text-text-muted border-border",
-        };
+  const styleBadge = STYLE_BADGES[s.style] ?? STYLE_BADGES.organic;
 
   function setRemote(next: SeedPostView["status"]) {
     setStatus(next);

@@ -10,7 +10,7 @@ type ClientOption = {
   hasProfile: boolean;
 };
 
-type Style = "organic" | "brand_led";
+type Style = "organic" | "brand_led" | "bridge";
 
 type SeedPost = {
   id: string;
@@ -57,6 +57,21 @@ const COMMENT_LABELS: Record<
     c3: "Comment 3 (nuance)",
     c3Accent: false,
   },
+  bridge: {
+    c1: "Comment 1 (validates pain)",
+    c2: "Comment 2 (introduces concept)",
+    c3: "Comment 3 (names the project)",
+    c3Accent: true,
+  },
+};
+
+const STYLE_HINTS: Record<Style, string> = {
+  organic:
+    "The post plants a discussion in the brand's niche WITHOUT naming the brand. The brand mention rides in via the third comment.",
+  brand_led:
+    "The post is openly about the brand — honest review, open question, switch story. Comments support, ask, and add nuance.",
+  bridge:
+    "The post is aimed at people OUTSIDE the brand's category — leads with a mainstream pain, floats the broader category as an answer, names the brand once as 'a project trying this'. Recruitment into the niche.",
 };
 
 function normalizeSub(raw: string): string {
@@ -218,15 +233,8 @@ export function GenerateForm({
           </select>
         </Field>
 
-        <Field
-          label="Post style"
-          hint={
-            style === "brand_led"
-              ? "The post is openly about the brand — honest review, open question, switch story. Comments support, ask, and add nuance."
-              : "The post plants a discussion in the brand's niche WITHOUT naming the brand. The brand mention rides in via the third comment."
-          }
-        >
-          <div className="grid grid-cols-2 gap-2">
+        <Field label="Post style" hint={STYLE_HINTS[style]}>
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
             <StyleOption
               active={style === "organic"}
               disabled={pending}
@@ -240,6 +248,13 @@ export function GenerateForm({
               onClick={() => setStyle("brand_led")}
               title="Brand-led"
               subtitle="Post is about the brand"
+            />
+            <StyleOption
+              active={style === "bridge"}
+              disabled={pending}
+              onClick={() => setStyle("bridge")}
+              title="Bridge"
+              subtitle="For people outside the category"
             />
           </div>
         </Field>
@@ -306,7 +321,7 @@ export function GenerateForm({
                 ? `Too many — max ${MAX_PER_RUN}`
                 : finalSubs.length === 0
                   ? "Pick or type at least one subreddit"
-                  : `Will generate ${finalSubs.length} ${style === "brand_led" ? "brand-led" : "organic"} bundle${finalSubs.length === 1 ? "" : "s"}`}
+                  : `Will generate ${finalSubs.length} ${style === "brand_led" ? "brand-led" : style === "bridge" ? "bridge" : "organic"} bundle${finalSubs.length === 1 ? "" : "s"}`}
           </span>
           <button
             type="submit"

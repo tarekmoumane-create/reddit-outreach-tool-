@@ -12,7 +12,7 @@ import type { BrandProfile } from "@/lib/ai/research";
 export const dynamic = "force-dynamic";
 export const maxDuration = 800;
 
-const ALLOWED_STYLES = new Set<SeedStyle>(["organic", "brand_led"]);
+const ALLOWED_STYLES = new Set<SeedStyle>(["organic", "brand_led", "bridge"]);
 
 export async function POST(
   req: NextRequest,

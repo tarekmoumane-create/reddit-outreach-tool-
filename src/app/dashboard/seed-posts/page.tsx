@@ -106,8 +106,8 @@ export default async function SeedPostsPage({
               id: r.id,
               subreddit: r.subreddit,
               style:
-                (r.style as SeedPostView["style"]) === "brand_led"
-                  ? "brand_led"
+                r.style === "brand_led" || r.style === "bridge"
+                  ? (r.style as SeedPostView["style"])
                   : "organic",
               post_title: r.post_title,
               post_body: r.post_body,

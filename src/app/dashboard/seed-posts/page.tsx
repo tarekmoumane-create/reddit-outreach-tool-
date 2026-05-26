@@ -29,6 +29,10 @@ export default async function SeedPostsPage({
 
   const { data: rows, error } = await query;
 
+  const csvHref = `/api/seed-posts/export.csv${
+    client_id ? `?client_id=${encodeURIComponent(client_id)}` : ""
+  }`;
+
   const total = rows?.length ?? 0;
   const drafts = (rows ?? []).filter((r) => r.status === "draft").length;
   const posted = (rows ?? []).filter((r) => r.status === "posted").length;
@@ -46,10 +50,16 @@ export default async function SeedPostsPage({
             mentions the brand.
           </p>
         </div>
-        <Link href="/dashboard/seed-posts/new" className="btn-primary">
-          <span className="text-base leading-none">+</span>
-          New seed post
-        </Link>
+        <div className="flex items-center gap-3">
+          <a href={csvHref} className="btn-secondary">
+            <span className="text-[14px] leading-none">↓</span>
+            Export CSV
+          </a>
+          <Link href="/dashboard/seed-posts/new" className="btn-primary">
+            <span className="text-base leading-none">+</span>
+            New seed post
+          </Link>
+        </div>
       </div>
 
       <div className="entry delay-1 card grid grid-cols-3">

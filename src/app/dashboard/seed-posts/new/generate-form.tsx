@@ -8,6 +8,7 @@ type ClientOption = {
   name: string;
   subreddits: string[];
   hasProfile: boolean;
+  active: boolean;
 };
 
 type Style = "organic" | "brand_led" | "bridge";
@@ -227,6 +228,7 @@ export function GenerateForm({
             {clients.map((c) => (
               <option key={c.id} value={c.id}>
                 {c.name}
+                {c.active ? "" : " · inactive"}
                 {c.hasProfile ? "" : " · no research yet"}
               </option>
             ))}

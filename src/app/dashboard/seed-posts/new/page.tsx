@@ -11,6 +11,7 @@ type ClientOption = {
   name: string;
   subreddits: string[];
   hasProfile: boolean;
+  active: boolean;
 };
 
 export default async function NewSeedPostPage({
@@ -21,10 +22,13 @@ export default async function NewSeedPostPage({
   const { client_id } = await searchParams;
   const supabase = await createClient();
 
+  // Seed posts are a manual operator action, so they are NOT gated by the
+  // `active` toggle (that flag only controls the daily auto-scraper). Show
+  // every client; inactive ones just get a label in the dropdown.
   const { data: clients } = await supabase
     .from("clients")
-    .select("id, name, brand_profile, excluded_subreddits")
-    .eq("active", true)
+    .select("id, name, brand_profile, excluded_subreddits, active")
+    .order("active", { ascending: false })
     .order("name");
 
   if (!clients || clients.length === 0) {
@@ -44,6 +48,7 @@ export default async function NewSeedPostPage({
       name: c.name,
       subreddits,
       hasProfile: !!profile,
+      active: c.active !== false,
     };
   });
 

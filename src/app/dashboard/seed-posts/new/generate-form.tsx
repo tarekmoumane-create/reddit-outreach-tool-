@@ -34,13 +34,23 @@ type JobStatus = "pending" | "running" | "done" | "error";
 
 type GenJob = {
   subreddit: string;
+  style: Style;
   status: JobStatus;
   error?: string;
   result?: SeedPost;
 };
 
-const MAX_PER_RUN = 5;
+const MAX_SUBS = 5;
+const MAX_BUNDLES = 15;
 const PARALLELISM = 2;
+
+const STYLE_ORDER: Style[] = ["organic", "brand_led", "bridge"];
+
+const STYLE_LABEL: Record<Style, string> = {
+  organic: "Organic",
+  brand_led: "Brand-led",
+  bridge: "Bridge",
+};
 
 const COMMENT_LABELS: Record<
   Style,
@@ -92,7 +102,9 @@ export function GenerateForm({
     () => clients.find((c) => c.id === clientId) ?? clients[0],
     [clients, clientId],
   );
-  const [style, setStyle] = useState<Style>("organic");
+  const [styles, setStyles] = useState<Set<Style>>(
+    () => new Set<Style>(["organic"]),
+  );
   const [picked, setPicked] = useState<Set<string>>(
     () => new Set(current.subreddits.slice(0, 1)),
   );
@@ -119,6 +131,20 @@ export function GenerateForm({
     });
   }
 
+  function toggleStyle(s: Style) {
+    setStyles((prev) => {
+      const next = new Set(prev);
+      if (next.has(s)) next.delete(s);
+      else next.add(s);
+      return next;
+    });
+  }
+
+  const selectedStyles = useMemo(
+    () => STYLE_ORDER.filter((s) => styles.has(s)),
+    [styles],
+  );
+
   const customSubs = useMemo(() => {
     return customText
       .split(/[\n,]/)
@@ -139,9 +165,14 @@ export function GenerateForm({
     return out;
   }, [picked, customSubs]);
 
-  const overLimit = finalSubs.length > MAX_PER_RUN;
+  const totalBundles = finalSubs.length * selectedStyles.length;
+  const tooManySubs = finalSubs.length > MAX_SUBS;
+  const overLimit = totalBundles > MAX_BUNDLES;
 
-  async function generateOne(subreddit: string): Promise<SeedPost> {
+  async function generateOne(
+    subreddit: string,
+    style: Style,
+  ): Promise<SeedPost> {
     const res = await fetch(`/api/clients/${clientId}/seed-posts`, {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -164,19 +195,31 @@ export function GenerateForm({
     e.preventDefault();
     setError(null);
 
+    if (selectedStyles.length === 0) {
+      setError("pick at least one style");
+      return;
+    }
     if (finalSubs.length === 0) {
       setError("pick at least one subreddit");
       return;
     }
+    if (tooManySubs) {
+      setError(`max ${MAX_SUBS} subreddits per run`);
+      return;
+    }
     if (overLimit) {
-      setError(`max ${MAX_PER_RUN} subreddits per run`);
+      setError(`max ${MAX_BUNDLES} bundles per run (subreddits × styles)`);
       return;
     }
 
-    const initial: GenJob[] = finalSubs.map((s) => ({
-      subreddit: s,
-      status: "pending",
-    }));
+    // One job per (subreddit, style) pair, grouped by subreddit so a
+    // subreddit's style variants sit next to each other in the results.
+    const initial: GenJob[] = [];
+    for (const sub of finalSubs) {
+      for (const st of selectedStyles) {
+        initial.push({ subreddit: sub, style: st, status: "pending" });
+      }
+    }
     setJobs(initial);
     setPending(true);
 
@@ -194,7 +237,10 @@ export function GenerateForm({
         if (i >= initial.length) return;
         updateJob(i, { status: "running" });
         try {
-          const result = await generateOne(initial[i].subreddit);
+          const result = await generateOne(
+            initial[i].subreddit,
+            initial[i].style,
+          );
           updateJob(i, { status: "done", result });
         } catch (err) {
           updateJob(i, {
@@ -235,26 +281,35 @@ export function GenerateForm({
           </select>
         </Field>
 
-        <Field label="Post style" hint={STYLE_HINTS[style]}>
+        <Field
+          label={`Post styles${
+            selectedStyles.length ? ` · ${selectedStyles.length} selected` : ""
+          }`}
+          hint={
+            selectedStyles.length === 1
+              ? STYLE_HINTS[selectedStyles[0]]
+              : "Select one or more. Each subreddit gets one bundle per selected style."
+          }
+        >
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
             <StyleOption
-              active={style === "organic"}
+              active={styles.has("organic")}
               disabled={pending}
-              onClick={() => setStyle("organic")}
+              onClick={() => toggleStyle("organic")}
               title="Organic"
               subtitle="Brand stays out of the post"
             />
             <StyleOption
-              active={style === "brand_led"}
+              active={styles.has("brand_led")}
               disabled={pending}
-              onClick={() => setStyle("brand_led")}
+              onClick={() => toggleStyle("brand_led")}
               title="Brand-led"
               subtitle="Post is about the brand"
             />
             <StyleOption
-              active={style === "bridge"}
+              active={styles.has("bridge")}
               disabled={pending}
-              onClick={() => setStyle("bridge")}
+              onClick={() => toggleStyle("bridge")}
               title="Bridge"
               subtitle="For people outside the category"
             />
@@ -268,7 +323,7 @@ export function GenerateForm({
           hint={
             current.subreddits.length === 0
               ? "No suggestions yet. Run brand research on this client, or just type subreddits below."
-              : `Tick any you want a bundle for. Up to ${MAX_PER_RUN} per run — each one is its own post + 3 comments.`
+              : `Tick any you want bundles for, up to ${MAX_SUBS}. Each one gets a bundle per selected style.`
           }
         >
           {current.subreddits.length > 0 ? (
@@ -319,15 +374,25 @@ export function GenerateForm({
           <span className="font-mono text-[11.5px] text-text-dim">
             {pending
               ? `Generating ${doneCount + errorCount}/${jobs.length}...`
-              : overLimit
-                ? `Too many — max ${MAX_PER_RUN}`
-                : finalSubs.length === 0
-                  ? "Pick or type at least one subreddit"
-                  : `Will generate ${finalSubs.length} ${style === "brand_led" ? "brand-led" : style === "bridge" ? "bridge" : "organic"} bundle${finalSubs.length === 1 ? "" : "s"}`}
+              : selectedStyles.length === 0
+                ? "Pick at least one style"
+                : tooManySubs
+                  ? `Too many subreddits — max ${MAX_SUBS}`
+                  : overLimit
+                    ? `Too many bundles — max ${MAX_BUNDLES} (subreddits × styles)`
+                    : finalSubs.length === 0
+                      ? "Pick or type at least one subreddit"
+                      : `Will generate ${totalBundles} bundle${totalBundles === 1 ? "" : "s"} (${finalSubs.length} subreddit${finalSubs.length === 1 ? "" : "s"} × ${selectedStyles.length} style${selectedStyles.length === 1 ? "" : "s"})`}
           </span>
           <button
             type="submit"
-            disabled={pending || finalSubs.length === 0 || overLimit}
+            disabled={
+              pending ||
+              finalSubs.length === 0 ||
+              selectedStyles.length === 0 ||
+              tooManySubs ||
+              overLimit
+            }
             className="btn-primary"
           >
             {pending ? (
@@ -368,7 +433,7 @@ export function GenerateForm({
 
           <ul className="flex flex-col gap-4">
             {jobs.map((j) => (
-              <JobCard key={j.subreddit} job={j} style={style} />
+              <JobCard key={`${j.subreddit}:${j.style}`} job={j} />
             ))}
           </ul>
         </div>
@@ -413,8 +478,8 @@ function StyleOption({
   );
 }
 
-function JobCard({ job, style }: { job: GenJob; style: Style }) {
-  const labels = COMMENT_LABELS[style];
+function JobCard({ job }: { job: GenJob }) {
+  const labels = COMMENT_LABELS[job.style];
   return (
     <li className="card flex flex-col gap-3 px-5 py-4">
       <div className="flex items-center justify-between gap-3">
@@ -422,6 +487,9 @@ function JobCard({ job, style }: { job: GenJob; style: Style }) {
           <StatusDot status={job.status} />
           <span className="font-mono text-[13px] text-text">
             r/{job.subreddit}
+          </span>
+          <span className="rounded border border-border bg-surface px-1.5 py-0.5 text-[10px] uppercase tracking-[0.08em] text-text-muted">
+            {STYLE_LABEL[job.style]}
           </span>
         </div>
         <span
